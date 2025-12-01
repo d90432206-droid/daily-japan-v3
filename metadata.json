@@ -1,0 +1,7 @@
+{
+  "name": "Chinese-Japanese Learning Companion",
+  "description": "A cute, interactive app for Japanese speakers to learn Chinese using Gemini. Features conversation practice, semantic comparison, dictionary, and vocabulary builder.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
