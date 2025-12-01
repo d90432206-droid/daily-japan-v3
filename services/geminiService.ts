@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { DictionaryResult, SemanticResult, VocabWord, Difficulty } from "../types";
 
@@ -71,6 +72,68 @@ export const getNextSentenceHint = async (history: string, topic: string): Promi
     console.error(e);
     return "エラーが発生しました。";
   }
+};
+
+export interface SentenceAnalysis {
+  isValid: boolean;
+  correction?: string;
+  meaning: string;
+  pronunciation: string; // Bopomofo
+  breakdown: {
+    word: string;
+    bopomofo: string;
+    meaning: string;
+  }[];
+  explanation: string;
+}
+
+export const analyzeSentenceStructure = async (sentence: string): Promise<SentenceAnalysis> => {
+  const prompt = `
+    ユーザーが入力した中国語の文章「${sentence}」を分析してください。
+    台湾の繁体字と注音符号（Bopomofo）を基準にします。
+
+    以下の情報をJSONで返してください：
+    1. isValid: 文法的に自然で正しいかどうか (true/false)
+    2. correction: もし不自然なら、より自然な台湾華語の表現（なければnull）
+    3. meaning: 日本語の意味
+    4. pronunciation: 全体の注音符号
+    5. breakdown: 各単語ごとの分解（単語、注音、意味）
+    6. explanation: 文法や使い方のポイントを日本語で詳しく解説（ジェイ・チョウ風の口調で）
+  `;
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      isValid: { type: Type.BOOLEAN },
+      correction: { type: Type.STRING, nullable: true },
+      meaning: { type: Type.STRING },
+      pronunciation: { type: Type.STRING },
+      breakdown: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING },
+            bopomofo: { type: Type.STRING },
+            meaning: { type: Type.STRING }
+          }
+        }
+      },
+      explanation: { type: Type.STRING }
+    },
+    required: ["isValid", "meaning", "pronunciation", "breakdown", "explanation"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: MODEL_FLASH,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  return JSON.parse(response.text || '{}') as SentenceAnalysis;
 };
 
 // --- Semantic Comparison Service ---
